@@ -7,6 +7,10 @@ var bodyParser = require('body-parser');
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
+var mongoose = require('mongoose');
+
+mongoose.connect('mongodb://192.168.99.100:27017/cense');
+
 var app = express();
 
 
