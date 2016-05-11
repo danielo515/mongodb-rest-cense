@@ -22,7 +22,10 @@ router.post('cities/:cityname', function(req, res, next){
 });
 
 router.get('/byage', function(req, res, next){
-  cities.aggregate({ "$unwind": "$population"},{"$group" : { "_id":"$population.age", "value":{"$sum" :"$population.count"}}}).exec(function(err,docs){
+  cities.aggregate({ "$unwind": "$population"},
+    {"$group" : { "_id": null , "max":{ "$max":"$population.age"},"min":{ "$min":"$population.age"}, "average":{ "$avg":"$population.age"}, "total":{"$sum" :"$population.count"}}},
+    {"$project" : {"_id":0,"max":1,"min":1,"average":1,"total":1}})
+  .exec(function(err,docs){
     if(!err) {
     res.status(200).json({ data: docs });
   } else {
