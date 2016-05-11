@@ -4,7 +4,7 @@ var Schema = mongoose.Schema;
 // create a schema
 var citySchema = new Schema({
   ts: Date,
-  coty: String,
+  city: String,
   population: [{
     age: Number,
     count: Number
