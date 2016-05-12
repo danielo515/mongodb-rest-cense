@@ -6,10 +6,11 @@ var citySchema = new Schema({
   ts: Date,
   city: String,
   population: [{
+    _id: false,
     age: Number,
     count: Number
   }]
-});
+},{versionKey: false});
 
 
 var City = mongoose.model('city', citySchema);
