@@ -4,7 +4,8 @@ module.exports = {
     byAge: byAge,
     byCity: byCity,
     latest: latest,
-    create: createCity
+    create: createCity,
+    update: updateCity
 }
 
 /** =========================  QUERYING METHODS ============ */
@@ -72,43 +73,105 @@ function byCity(req, res) {
 
 /** =========================  CREATE AND UPDATE METHODS ============ */
 
+// POST city 
 function createCity(req, res) {
-    ifRecordExists(
-        { "city": req.params.cityname },
-        function(){res.status(403).json({err:"Already existing city"})},
-        function(){
-            var newCity = {"ts": new Date().getTime(),"city":req.params.cityname, "population":[]};
-            if(req.body.population){
-                req.body.population.forEach(function(pop){
-                    if(pop.age && pop.count){
-                        newCity.population.push({age:pop.age,count:pop.count})
-                    }
-                })
-             cities.create(newCity,function(err,city){if(err){errHandler.call(res,err)}else {res.status(201).json({newCity:city})}})   
-            }else{
-                res.status(500).json({err:"A population array of at least one element is required to create a new city"})
-            }
+    ifRecordExists({ "city": req.params.cityname })
+        /** if document exists we do not want to allow the creation of a new one. Use put operation instead */
+        .then(function (document) {
+            console.log('Tried to update existing document: ', document)
+            res.status(403).json({ err: "Already existing city" })
+        })
+        /** Rejected promise means no existing city, create a new one */
+        .catch(createCity)
+        .catch(errHandler.bind(res))
+
+    function createCity(doc) {
+        if (doc !== null) throw doc // if doc is not null, some other error may have happened, bubble to next error handler
+        if (req.body.population) {
+            var newCity = { "ts": new Date().getTime(), "city": req.params.cityname, "population": mergePopultaion([],req.body.population) };
+            cities.create(newCity, function (err, city) { if (err) { errHandler.call(res, err) } else { res.status(201).json({ newRecord: city }) } })
+        } else {
+            res.status(500).json({ err: "A population array of at least one element is required to create a new city" })
         }
-    )
-    .catch(errHandler.bind(res))
+    }
+
 }
 
 
+// PUT city
+
+function updateCity (req, res) {
+    ifRecordExists({ "city": req.params.cityname })
+    .then(updateRecord)
+    
+    function updateRecord(document){
+        if(!req.body.population){ 
+            res.status(500).json({ err: "A population array of at least one element is required" });
+            return
+        }
+        var newRecord = {"ts": new Date().getTime(), "city": document.city, "population": mergePopultaion(document.population,req.body.population)};
+        cities.create(newRecord, function (err, city) { if (err) { errHandler.call(res, err) } else { res.status(201).json({ newRecord: city }) } })
+            
+    }
+}
 
 
 /** =========================  UTILS ============ */
 
 
-function ifRecordExists(search, itDoes, doesNot) {
-    return cities.findOne(search).exec()
-        .then(function (document) {
-            if (document !== null) {
-                itDoes(document)
-            } else {
-                doesNot(null)
-            }
+/**
+ * Wrapper that returns a promise that is rejected if the document does not exists and fulfilled if it does
+ * I do it this way because findOne does not reject the promise if it does not finds any document
+ * it just returns a null document  
+ * 
+ * @param search an object to perform the find one operation
+ * @returns {Promise} a promise fulfilled if the document is found, rejected otherwhise
+ */
+function ifRecordExists(search) {
+
+    return new Promise(
+        function (resolve, reject) {
+            cities.findOne(search).exec()
+                .then(function (document) {
+                    if (document !== null) {
+                        resolve(document)
+                    } else {
+                        reject(null)
+                    }
+                })
         })
 
+}
+
+
+/**
+ * Merges two populatoins arrays.
+ * Existing values on the original array are updated.
+ * Duplicated values ones on the incoming array are removed by keeping the rightmost
+ * Validates the contents of the incoming array
+ * 
+ * @param {Array} original The original population array
+ * @param {AbstractWorker} incoming The array to add. Should be an array of valid population objecs like [{"age":28,"count":50}]
+ * @returns {Array} The original array with the new
+ */
+function mergePopultaion(original,incoming){
+    var hash = {};
+    original.map(function(popu,i){
+        hash[popu.age] = i
+    });
+    
+    incoming.forEach(function(popu){
+        if( popu.age && popu.count ){
+            var existing = hash[popu.age];
+            if(  existing !== undefined ){
+                original[existing].count = popu.count
+            } else {
+                original.push({"age":popu.age,"count":popu.count})
+            }
+        }
+    })
+    
+    return original  
 }
 
 /**

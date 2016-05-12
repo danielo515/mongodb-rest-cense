@@ -23,5 +23,6 @@ router.get('/bycity', cense.byCity);
 router.get('/latest', cense.latest);
 
 router.post('/cities/:cityname', cense.create);
+router.put('/cities/:cityname', cense.update);
 
 module.exports = router;
