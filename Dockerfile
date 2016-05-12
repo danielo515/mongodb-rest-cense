@@ -5,5 +5,7 @@ FROM readytalk/nodejs
   RUN npm install
   ADD . /app
 
+  #Expose the port
+  EXPOSE 3000
   CMD []
   ENTRYPOINT ["/nodejs/bin/npm", "start"]
