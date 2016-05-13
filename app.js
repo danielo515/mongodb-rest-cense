@@ -9,7 +9,10 @@ var users = require('./routes/users');
 
 var mongoose = require('mongoose');
 
-mongoose.connect('mongodb://192.168.99.100:27017/cense');
+var mongoServer = process.env.MONGO_PORT_27017_TCP_ADDR || "192.168.99.100" ,
+    mongoPort = process.env.MONGO_PORT_27017_TCP_PORT || 27017;
+
+mongoose.connect('mongodb://'+ mongoServer +':'+ mongoPort +'/cense');
 
 var app = express();
 
