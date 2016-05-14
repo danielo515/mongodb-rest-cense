@@ -18,7 +18,7 @@ The database will be named cense and have a collection called `cities`.
 Each document on the collection will be a record representing the state of the city in certain timestamp.
 The following data model is expected for each record:
 
-´´´
+```
 {
   ts: Date,
   city: String,
@@ -27,7 +27,7 @@ The following data model is expected for each record:
     count: Number
   }]
 }
-´´´
+```
 
 * `ts`: The timestamp of the record
 * `city`: The city named
