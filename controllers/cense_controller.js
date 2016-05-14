@@ -3,8 +3,9 @@ var cities = require('../models/city.js')
 module.exports = {
     byAge: byAge,
     byCity: byCity,
+    byAgeAndCity: byAgeAndCity,
     latest: latest,
-    create: createCity,
+    create: createNewCity,
     update: updateCity
 }
 
@@ -25,6 +26,45 @@ function byAge(req, res) {
     }
 }
 
+/**
+ * Aggregated data by city
+ * sums all the populations records of each city and calculates the maximum, minimum and average ages. 
+ * 
+ * @param req express request object
+ * @param res express response object
+ * 
+ */
+function byCity(req, res) {
+    cities.aggregate({ "$unwind": "$population" },
+        { "$group": { "_id": "$city", "max": { "$max": "$population.age" }, "min": { "$min": "$population.age" }, "average": { "$avg": "$population.age" }, "total": { "$sum": "$population.count" } } })
+        .exec() // we have to call exect to get a promise
+        .then(function (docs) {
+            res.status(200).json({ data: docs });
+        })
+        .catch(errHandler.bind(res));
+
+}
+
+
+function byAgeAndCity(req, res) {
+    cities.aggregate({ "$unwind": "$population" },
+        { "$group": { "_id": { "city": "$city", "age": "$population.age" }, "max": { "$max": "$population.count" }, "min": { "$min": "$population.count" }, "average": { "$avg": "$population.count" }, "total": { "$sum": "$population.count" } } })
+        .exec() // we have to call exect to get a promise
+        .then(function (docs) {
+            res.status(200).json({ data: groupOtput(docs) });
+        })
+        .catch(errHandler.bind(res));
+
+    function groupOtput(docs) {
+        var result = {};
+        docs.forEach(function (record) {
+            var city = record._id.city, age = record._id.age;
+            result[city] = result[city] || {};
+            result[city][age] = { "max": record.max, "min": record.min, "average": record.average, "total": record.total };
+        })
+        return result
+    }
+}
 
 /**
  * Get the latest record for each city
@@ -52,29 +92,10 @@ function latest(req, res) {
 }
 
 
-/**
- * Aggregated data by city
- * sums all the populations records of each city and calculates the maximum, minimum and average ages. 
- * 
- * @param req express request object
- * @param res express response object
- * 
- */
-function byCity(req, res) {
-    cities.aggregate({ "$unwind": "$population" },
-        { "$group": { "_id": "$city", "max": { "$max": "$population.age" }, "min": { "$min": "$population.age" }, "average": { "$avg": "$population.age" }, "total": { "$sum": "$population.count" } } })
-        .exec() // we have to call exect to get a promise
-        .then(function (docs) {
-            res.status(200).json({ data: docs });
-        })
-        .catch(errHandler.bind(res));
-}
-
-
 /** =========================  CREATE AND UPDATE METHODS ============ */
 
 // POST city 
-function createCity(req, res) {
+function createNewCity(req, res) {
     ifRecordExists({ "city": req.params.cityname })
         /** if document exists we do not want to allow the creation of a new one. Use put operation instead */
         .then(function (document) {
@@ -88,7 +109,7 @@ function createCity(req, res) {
     function createCity(doc) {
         if (doc !== null) throw doc // if doc is not null, some other error may have happened, bubble to next error handler
         if (req.body.population) {
-            var newCity = { "ts": new Date().getTime(), "city": req.params.cityname, "population": mergePopultaion([],req.body.population) };
+            var newCity = { "ts": new Date().getTime(), "city": req.params.cityname, "population": mergePopultaion([], req.body.population) };
             cities.create(newCity, function (err, city) { if (err) { errHandler.call(res, err) } else { res.status(201).json({ newRecord: city }) } })
         } else {
             res.status(500).json({ err: "A population array of at least one element is required to create a new city" })
@@ -100,18 +121,18 @@ function createCity(req, res) {
 
 // PUT city
 
-function updateCity (req, res) {
+function updateCity(req, res) {
     ifRecordExists({ "city": req.params.cityname })
-    .then(updateRecord)
-    
-    function updateRecord(document){
-        if(!req.body.population){ 
+        .then(updateRecord)
+
+    function updateRecord(document) {
+        if (!req.body.population) {
             res.status(500).json({ err: "A population array of at least one element is required" });
             return
         }
-        var newRecord = {"ts": new Date().getTime(), "city": document.city, "population": mergePopultaion(document.population,req.body.population)};
+        var newRecord = { "ts": new Date().getTime(), "city": document.city, "population": mergePopultaion(document.population, req.body.population) };
         cities.create(newRecord, function (err, city) { if (err) { errHandler.call(res, err) } else { res.status(201).json({ newRecord: city }) } })
-            
+
     }
 }
 
@@ -154,24 +175,24 @@ function ifRecordExists(search) {
  * @param {AbstractWorker} incoming The array to add. Should be an array of valid population objecs like [{"age":28,"count":50}]
  * @returns {Array} The original array with the new
  */
-function mergePopultaion(original,incoming){
+function mergePopultaion(original, incoming) {
     var hash = {};
-    original.map(function(popu,i){
+    original.map(function (popu, i) {
         hash[popu.age] = i
     });
-    
-    incoming.forEach(function(popu){
-        if( popu.age && popu.count ){
+
+    incoming.forEach(function (popu) {
+        if (popu.age && popu.count) {
             var existing = hash[popu.age];
-            if(  existing !== undefined ){
+            if (existing !== undefined) {
                 original[existing].count = popu.count
             } else {
-                original.push({"age":popu.age,"count":popu.count})
+                original.push({ "age": popu.age, "count": popu.count })
             }
         }
     })
-    
-    return original  
+
+    return original
 }
 
 /**

@@ -20,6 +20,7 @@ router.get('/cities',function listCities(req, res, next) {
 
 router.get('/byage', cense.byAge);
 router.get('/bycity', cense.byCity);
+router.get('/byageandcity', cense.byAgeAndCity);
 router.get('/latest', cense.latest);
 
 router.post('/cities/:cityname', cense.create);
