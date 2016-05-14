@@ -1,11 +1,13 @@
-FROM readytalk/nodejs
+FROM node
+MAINTAINER Daniel Rodriguez Rivero 
 
   WORKDIR /app
-  ADD package.json /app/
-  RUN npm install
   ADD . /app
+  RUN npm install  
 
   #Expose the port
   EXPOSE 3000
-  CMD []
-  ENTRYPOINT ["/nodejs/bin/npm", "start"]
+  
+  ENV VCAP_APP_HOST="0.0.0.0"
+  
+  CMD ["npm", "start"]
