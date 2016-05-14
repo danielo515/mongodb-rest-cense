@@ -38,10 +38,21 @@ function byCity(req, res) {
     cities.aggregate({ "$unwind": "$population" },
         { "$group": { "_id": "$city", "max": { "$max": "$population.age" }, "min": { "$min": "$population.age" }, "average": { "$avg": "$population.age" }, "total": { "$sum": "$population.count" } } })
         .exec() // we have to call exect to get a promise
-        .then(function (docs) {
-            res.status(200).json({ data: docs });
-        })
+        .then(makeResponse)
         .catch(errHandler.bind(res));
+
+
+    function makeResponse(docs) {
+        var result = [];
+        docs.forEach(function (city) {
+            var currCity = {
+                "city": city._id,
+                "population": [{ "age" : {"max": city.max, "min": city.min, "average": city.average}, "total": city.total }] // it's better to keep population as an array of objects, even with a single object
+            };
+            result.push(currCity);
+        });
+        res.status(200).json({ data: result });
+    }
 
 }
 
@@ -56,11 +67,16 @@ function byAgeAndCity(req, res) {
         .catch(errHandler.bind(res));
 
     function groupOtput(docs) {
-        var result = {};
+        var result = [], hashmap = {};
         docs.forEach(function (record) {
-            var city = record._id.city, age = record._id.age;
-            result[city] = result[city] || {};
-            result[city][age] = { "max": record.max, "min": record.min, "average": record.average, "total": record.total };
+            var cityNAme = record._id.city, age = record._id.age,
+                inResultsArray = hashmap[cityNAme] !== undefined,
+                city = inResultsArray ? result[hashmap[cityNAme]] : { "city": cityNAme, population: [] };
+
+            city.population.push({ "age": age, "count": { "max": record.max, "min": record.min, "average": record.average, "total": record.total } });
+            if (!inResultsArray) {
+                hashmap[cityNAme] = (result.push(city) - 1);
+            }
         })
         return result
     }
@@ -83,8 +99,7 @@ function latest(req, res) {
     function makeResponse(docs) {
         var result = [];
         docs.forEach(function (city) {
-            var currCity = {};
-            currCity[city._id] = city.match[0].population;
+            var currCity = { "city": city._id, "population": city.match[0].population };
             result.push(currCity);
         });
         res.status(200).json({ data: result });
