@@ -5,6 +5,7 @@ module.exports = {
     byCity: byCity,
     byAgeAndCity: byAgeAndCity,
     latest: latest,
+    all: listAll,
     create: createNewCity,
     update: updateCity
 }
@@ -104,6 +105,23 @@ function latest(req, res) {
         });
         res.status(200).json({ data: result });
     }
+}
+
+
+/**
+ * Stupid method that just lists all records
+ * @param {Express request} req Valid express request object
+ * @param {Express response} res Valid express response object
+ */
+
+function listAll(req, res, next) {
+  cities.find({}, function(err, docs) {
+    if(!err) {
+      res.status(200).json({ data: docs });
+    } else {
+      res.status(500).json({ message: err });
+    }
+  });
 }
 
 
