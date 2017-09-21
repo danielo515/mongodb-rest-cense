@@ -1,5 +1,7 @@
 # Mongodb rest cense
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/danielo515/mongodb-rest-cense.svg)](https://greenkeeper.io/)
+
 Just an example application that uses MongoDB as database engine.
 It has a rest interface that simulates a very basic cense of people.
 
